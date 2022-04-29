@@ -1,0 +1,6 @@
+﻿  Source.cpp
+E:\Fcis\3rd Year Fcis\6th Semester\High Performance Computing\HPC_ProjectTemplate\HPC_ProjectTemplate\Source.cpp(144,65): warning C4244: '+=': conversion from 'double' to 'int', possible loss of data
+E:\Fcis\3rd Year Fcis\6th Semester\High Performance Computing\HPC_ProjectTemplate\HPC_ProjectTemplate\Source.cpp(150,65): warning C4244: '+=': conversion from 'double' to 'int', possible loss of data
+E:\Fcis\3rd Year Fcis\6th Semester\High Performance Computing\HPC_ProjectTemplate\HPC_ProjectTemplate\Source.cpp(123): warning C4715: 'parallelIntensityCount': not all control paths return a value
+  Source.obj : MSIL module encountered; incremental linking is disabled for MSIL; performing full link
+  HPC_ProjectTemplate.vcxproj -> E:\Fcis\3rd Year Fcis\6th Semester\High Performance Computing\HPC_ProjectTemplate\Debug\HPC_ProjectTemplate.exe
