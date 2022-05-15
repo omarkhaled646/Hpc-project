@@ -96,11 +96,11 @@ void createImage(int* image, int width, int height, int index)
 	cout << "result Image Saved " << index << endl;
 }
 
-int* sequentialIntensityCount(int* image, int pixelsNumber)
+int* sequentialIntensityCount(int* image, int pixelsCount)
 {
 	int* intensityCount = new int[255]();
 
-	for (int pixel = 0; pixel < pixelsNumber; pixel++)
+	for (int pixel = 0; pixel < pixelsCount; pixel++)
 	{
 		int temp = image[pixel];
 		intensityCount[temp] += 1;
@@ -109,33 +109,18 @@ int* sequentialIntensityCount(int* image, int pixelsNumber)
 	return intensityCount;
 
 }
-
-int* parallelIntensityCount(int* image, int pixelsNumber)
+double* sequentialProbability(int* intensityCount, int pixelsCount)
 {
-	int* localIntensityCount = new int[pixelsNumber]();
-	int* globalIntensityCount = new int[pixelsNumber]();
-	int rank, size;
-	MPI_Init(NULL, NULL);
-	MPI_Comm_size(MPI_COMM_WORLD, &size);
-	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-	int no_pixelsPerProcessor = pixelsNumber / size;
-	int* pixelsPerProcessor = new int[no_pixelsPerProcessor]();
-	MPI_Scatter(image, no_pixelsPerProcessor, MPI_INT, pixelsPerProcessor, no_pixelsPerProcessor, MPI_INT, 0, MPI_COMM_WORLD);
-
-	for (int pixel = 0; pixel < no_pixelsPerProcessor; pixel++)
+	double* cumulativeProbPerIntensity = new double[256]();
+	for (int pixel = 0; pixel < pixelsCount; pixel++)
 	{
-		int temp = pixelsPerProcessor[pixel];
-		localIntensityCount[temp] += 1;
+		if (pixel == 0)
+			cumulativeProbPerIntensity[pixel] =((double)intensityCount[pixel]) / pixelsCount;
+
+		else
+			cumulativeProbPerIntensity[pixel] = (((double)intensityCount[pixel]) / pixelsCount) + cumulativeProbPerIntensity[pixel - 1];
 	}
-	MPI_Reduce(localIntensityCount, globalIntensityCount, pixelsNumber, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
-
-
-	if (rank == 0)
-	{
-		return globalIntensityCount;
-	}
-	MPI_Finalize();
-
+	return cumulativeProbPerIntensity;
 }
 
 int main()
@@ -155,7 +140,7 @@ int main()
 	int* imageData = inputImage(&ImageWidth, &ImageHeight, imagePath);
 
 	System::Drawing::Bitmap BM(imagePath);
-	int pixelsNumber = BM.Width * BM.Height;
+	int pixelsCount = BM.Width * BM.Height;
 
 
 
@@ -165,91 +150,67 @@ int main()
 	MPI_Init(NULL, NULL);
 	MPI_Comm_size(MPI_COMM_WORLD, &size);
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-	int image[16];
-	int imageSize = 16;
-	if (rank == 0) {
-		image[0] = 3;
-		image[1] = 2;
-		image[2] = 4;
-		image[3] = 5;
-		image[4] = 7;
-		image[5] = 7;
-		image[6] = 8;
-		image[7] = 2;
-		image[8] = 3;
-		image[9] = 1;
-		image[10] = 2;
-		image[11] = 3;
-		image[12] = 5;
-		image[13] = 4;
-		image[14] = 6;
-		image[15] = 7;
 
-	}
-	double no_pixelsPerProcessor = imageSize / size;
+	int no_pixelsPerProcessor = pixelsCount / size;
+	int no_intenstiesPerProcessor = 256 / size;
 	int* pixelsPerProcessor = new int[no_pixelsPerProcessor]();
-	int* localIntensityCount = new int[imageSize]();
-	int* globalIntensityCount = new int[imageSize]();
-	double* globalIntensity = new double[imageSize]();
-	double* globalPixelProbArr = new double[imageSize]();
-	double* PixelProbPerProcessor = new double[no_pixelsPerProcessor]();
-	int* newIntensity = new int[imageSize]();
+	int* localIntensityCount = new int[pixelsCount]();
+	int* globalIntensityCount = new int[pixelsCount]();
+	double* globalIntensity = new double[pixelsCount]();
+	double* IntensityProbPerProcessor = new double[no_intenstiesPerProcessor]();
+	int* newIntensity = new int[pixelsCount]();
 	int* newIntensityPerProcessor = new int[no_pixelsPerProcessor]();
+	int* newImageDataParellel = new int[pixelsCount]();
+	int* newImageDataSequential = new int[pixelsCount]();
 
-
-	MPI_Scatter(image, no_pixelsPerProcessor, MPI_INT, pixelsPerProcessor, no_pixelsPerProcessor, MPI_INT, 0, MPI_COMM_WORLD);
+	MPI_Scatter(imageData, no_pixelsPerProcessor, MPI_INT, pixelsPerProcessor, no_pixelsPerProcessor, MPI_INT, 0, MPI_COMM_WORLD);
 
 	for (int pixel = 0; pixel < no_pixelsPerProcessor; pixel++)
 	{
 		int temp = pixelsPerProcessor[pixel];
 		localIntensityCount[temp] += 1;
 	}
-	MPI_Reduce(localIntensityCount, globalIntensityCount, imageSize, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
+	MPI_Reduce(localIntensityCount, globalIntensityCount, pixelsCount, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
 	if (rank == 0)
 	{
-		for (int i = 0; i < imageSize; i++)
+		for (int pixel = 0; pixel < 256; pixel++)
 		{
-			globalIntensity[i] = (double)globalIntensityCount[i];
+			globalIntensity[pixel] = (double)globalIntensityCount[pixel];
 		}
 	}
 
-	MPI_Scatter(globalIntensity, no_pixelsPerProcessor, MPI_DOUBLE, PixelProbPerProcessor, no_pixelsPerProcessor, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-	for (int i = 0; i < no_pixelsPerProcessor; i++)
+	MPI_Scatter(globalIntensity, no_intenstiesPerProcessor, MPI_DOUBLE, IntensityProbPerProcessor, no_intenstiesPerProcessor, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+	for (int pixel = 0; pixel < no_intenstiesPerProcessor; pixel++)
 	{
-		if (i == 0)
-			PixelProbPerProcessor[i] = PixelProbPerProcessor[i] / imageSize;
+		if (pixel == 0)
+			IntensityProbPerProcessor[pixel] = IntensityProbPerProcessor[pixel] / pixelsCount;
 
 		else
-			PixelProbPerProcessor[i] = (PixelProbPerProcessor[i] / imageSize) + PixelProbPerProcessor[i - 1];
+			IntensityProbPerProcessor[pixel] = (IntensityProbPerProcessor[pixel] / pixelsCount) + IntensityProbPerProcessor[pixel - 1];
 
 
 	}
-	double end = PixelProbPerProcessor[(int)no_pixelsPerProcessor - 1];
+	double lastComulativeProb = IntensityProbPerProcessor[(int)no_intenstiesPerProcessor - 1];
 	double sum = 0;
-	MPI_Exscan(&end, &sum, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+	MPI_Exscan(&lastComulativeProb, &sum, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 
-	for (int i = 0; i < no_pixelsPerProcessor; i++)
+	for (int intensity = 0; intensity < no_intenstiesPerProcessor; intensity++)
 	{
 
-		newIntensityPerProcessor[i] = (int)((PixelProbPerProcessor[i] + sum) * 20);
+		newIntensityPerProcessor[intensity] = (int)((IntensityProbPerProcessor[intensity] + sum) * 240);
 
 	}
 
-	MPI_Gather(newIntensityPerProcessor, no_pixelsPerProcessor, MPI_INT, newIntensity, no_pixelsPerProcessor, MPI_INT, 0, MPI_COMM_WORLD);
-	if (rank == 0)
+	MPI_Gather(newIntensityPerProcessor, no_intenstiesPerProcessor, MPI_INT, newIntensity, no_intenstiesPerProcessor, MPI_INT, 0, MPI_COMM_WORLD);
+    MPI_Bcast(newIntensity, 256, MPI_INT, 0, MPI_COMM_WORLD);
+	MPI_Scatter(imageData, no_pixelsPerProcessor, MPI_INT, pixelsPerProcessor, no_pixelsPerProcessor, MPI_INT, 0, MPI_COMM_WORLD);
+	
+	for (int pixel = 0; pixel < no_pixelsPerProcessor; pixel++)
 	{
-		for (int i = 0; i < 16; i++)
-		{
-			printf("%d = %d\n", i, newIntensity[i]);
-		}
+		int intestiy = pixelsPerProcessor[pixel];
+		pixelsPerProcessor[pixel] = newIntensity[intestiy];
 	}
-	/*
-	int* x = parallelIntensityCount(image, 16);
-	for (int i = 0; i < 16; i++)
-	{
-		printf("%d = %d \n",i, x[i]);
-	}
-	*/
+	MPI_Gather(pixelsPerProcessor, no_pixelsPerProcessor, MPI_INT, newImageDataParellel, no_pixelsPerProcessor, MPI_INT, 0, MPI_COMM_WORLD);
 	MPI_Finalize();
 
 	if (rank == 0)
@@ -257,15 +218,16 @@ int main()
 		stop_s = clock();
 		TotalTime += (stop_s - start_s) / double(CLOCKS_PER_SEC) * 1000;
 		cout << "time for parallel: " << TotalTime << endl;
+		createImage(newImageDataParellel, ImageWidth, ImageHeight, 0);
 
-		start_s = clock();
-		int* sequentialCount = sequentialIntensityCount(imageData, pixelsNumber);
+		/*start_s = clock();
+		int* pixelsPerIntensity = sequentialIntensityCount(imageData, pixelsCount);
+		double* cumulativeProbPerIntensity = sequentialProbability(pixelsPerIntensity, pixelsCount);
 		stop_s = clock();
 		TotalTime += (stop_s - start_s) / double(CLOCKS_PER_SEC) * 1000;
-		cout << "time for sequential: " << TotalTime << endl;
-		//createImage(imageData, ImageWidth, ImageHeight, 0);
+		cout << "time for sequential: " << TotalTime << endl;*/
 
-		//free(imageData);
+		free(imageData);
 		system("pause");
 		return 0;
 	}
