@@ -100,22 +100,35 @@ int* sequentialIntensityCount(int* image, int pixelsCount)
 double* sequentialProbability(int* intensityCount, int pixelsCount)
 {
 	double* cumulativeProbPerIntensity = new double[256]();
-	for (int pixel = 0; pixel < pixelsCount; pixel++)
+	for (int intensity = 0; intensity < 256; intensity++)
 	{
-		if (pixel == 0)
-			cumulativeProbPerIntensity[pixel] =((double)intensityCount[pixel]) / pixelsCount;
+		if (intensity == 0)
+			cumulativeProbPerIntensity[intensity] =((double)intensityCount[intensity]) / pixelsCount;
 
 		else
-			cumulativeProbPerIntensity[pixel] = (((double)intensityCount[pixel]) / pixelsCount) + cumulativeProbPerIntensity[pixel - 1];
+			cumulativeProbPerIntensity[intensity] = (((double)intensityCount[intensity]) / pixelsCount) + cumulativeProbPerIntensity[intensity - 1];
 	}
 	return cumulativeProbPerIntensity;
 }
-int* newIntensityArr(double* intensityCount, int pixelsCount)
+int* updateIntensity(double* intensityCount)
 {
 	int* newIntensityArr = new int[256]();
-	for(int intensity =0; intensity < pixelsCount; intensity++)
+	for(int intensity =0; intensity < 256; intensity++)
 		newIntensityArr[intensity]=(int)(intensityCount[intensity] * 240);
+	return newIntensityArr;
 }
+
+int* updateImage(int* imageData, int* intensityArr, int pixelsCount)
+{
+	int* newImage = new int[pixelsCount]();
+	for (int pixel = 0; pixel < pixelsCount; pixel++)
+	{
+		int intensity = imageData[pixel];
+		newImage[pixel] = intensityArr[intensity];
+	}
+	return newImage;
+}
+
 int main()
 {
 	int ImageWidth = 4, ImageHeight = 4;
@@ -213,12 +226,15 @@ int main()
 		cout << "time for parallel: " << TotalTime << endl;
 		createImage(newImageDataParellel, ImageWidth, ImageHeight, 0);
 
-		/*start_s = clock();
+		start_s = clock();
 		int* pixelsPerIntensity = sequentialIntensityCount(imageData, pixelsCount);
 		double* cumulativeProbPerIntensity = sequentialProbability(pixelsPerIntensity, pixelsCount);
+		int* newIntenstiyArr = updateIntensity(cumulativeProbPerIntensity);
+		int* newImageSequential = updateImage(imageData, newIntenstiyArr, pixelsCount);
 		stop_s = clock();
 		TotalTime += (stop_s - start_s) / double(CLOCKS_PER_SEC) * 1000;
-		cout << "time for sequential: " << TotalTime << endl;*/
+		cout << "time for sequential: " << TotalTime << endl;
+		createImage(newImageSequential, ImageWidth, ImageHeight, 1);
 
 		free(imageData);
 		system("pause");
