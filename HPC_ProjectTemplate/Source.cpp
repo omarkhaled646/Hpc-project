@@ -15,19 +15,7 @@ using namespace std;
 using namespace msclr::interop;
 
 
-double* seqcumulativeprob(double* probarr, int size)
 
-{
-	double* cumulativeprobarr = new double[size];
-	for (int i = 0; i < size; i++)
-	{
-		if (i == 0)
-			cumulativeprobarr[0] = probarr[0];
-		else
-			cumulativeprobarr[i] = probarr[i] + cumulativeprobarr[i - 1];
-	}
-	return cumulativeprobarr;
-}
 
 
 int* inputImage(int* w, int* h, System::String^ imagePath) //put the size of image in w & h
@@ -98,7 +86,7 @@ void createImage(int* image, int width, int height, int index)
 
 int* sequentialIntensityCount(int* image, int pixelsCount)
 {
-	int* intensityCount = new int[255]();
+	int* intensityCount = new int[256]();
 
 	for (int pixel = 0; pixel < pixelsCount; pixel++)
 	{
@@ -122,7 +110,12 @@ double* sequentialProbability(int* intensityCount, int pixelsCount)
 	}
 	return cumulativeProbPerIntensity;
 }
-
+int* newIntensityArr(double* intensityCount, int pixelsCount)
+{
+	int* newIntensityArr = new int[256]();
+	for(int intensity =0; intensity < pixelsCount; intensity++)
+		newIntensityArr[intensity]=(int)(intensityCount[intensity] * 240);
+}
 int main()
 {
 	int ImageWidth = 4, ImageHeight = 4;
