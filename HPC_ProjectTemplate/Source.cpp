@@ -103,7 +103,7 @@ double* sequentialProbability(int* intensityCount, int pixelsCount)
 	for (int intensity = 0; intensity < 256; intensity++)
 	{
 		if (intensity == 0)
-			cumulativeProbPerIntensity[intensity] =((double)intensityCount[intensity]) / pixelsCount;
+			cumulativeProbPerIntensity[intensity] = ((double)intensityCount[intensity]) / pixelsCount;
 
 		else
 			cumulativeProbPerIntensity[intensity] = (((double)intensityCount[intensity]) / pixelsCount) + cumulativeProbPerIntensity[intensity - 1];
@@ -113,8 +113,8 @@ double* sequentialProbability(int* intensityCount, int pixelsCount)
 int* updateIntensity(double* intensityCount)
 {
 	int* newIntensityArr = new int[256]();
-	for(int intensity =0; intensity < 256; intensity++)
-		newIntensityArr[intensity]=(int)(intensityCount[intensity] * 240);
+	for (int intensity = 0; intensity < 256; intensity++)
+		newIntensityArr[intensity] = (int)(intensityCount[intensity] * 240);
 	return newIntensityArr;
 }
 
@@ -158,15 +158,11 @@ int main()
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
 	int no_pixelsPerProcessor = pixelsCount / size;
-	int no_intenstiesPerProcessor = 256 / size;
 	int* pixelsPerProcessor = new int[no_pixelsPerProcessor]();
-	int* localIntensityCount = new int[pixelsCount]();
-	int* globalIntensityCount = new int[pixelsCount]();
-	double* globalIntensity = new double[pixelsCount]();
-	double* IntensityProbPerProcessor = new double[no_intenstiesPerProcessor]();
-	int* newIntensity = new int[pixelsCount]();
-	int* newIntensityPerProcessor = new int[no_pixelsPerProcessor]();
-	int* newImageDataParellel = new int[pixelsCount]();
+	int* localIntensityCount = new int[256]();
+	int* globalIntensityCount = new int[256]();
+	int* newIntensity = new int[256]();
+	int* newImageDataParallel = new int[pixelsCount]();
 	int* newImageDataSequential = new int[pixelsCount]();
 
 	MPI_Scatter(imageData, no_pixelsPerProcessor, MPI_INT, pixelsPerProcessor, no_pixelsPerProcessor, MPI_INT, 0, MPI_COMM_WORLD);
@@ -176,47 +172,48 @@ int main()
 		int temp = pixelsPerProcessor[pixel];
 		localIntensityCount[temp] += 1;
 	}
-	MPI_Reduce(localIntensityCount, globalIntensityCount, pixelsCount, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
-	if (rank == 0)
+	MPI_Reduce(localIntensityCount, globalIntensityCount, 256, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
+	
+	if (rank == 0 && pixelsCount % size != 0)
 	{
-		for (int pixel = 0; pixel < 256; pixel++)
+		int remainingPixels = pixelsCount % size;
+		int startIndex = no_pixelsPerProcessor * size;
+		
+		for (int pixel = startIndex; pixel < pixelsCount; pixel++)
 		{
-			globalIntensity[pixel] = (double)globalIntensityCount[pixel];
+			int temp = imageData[pixel];
+			globalIntensityCount[temp] += 1;
 		}
 	}
-
-	MPI_Scatter(globalIntensity, no_intenstiesPerProcessor, MPI_DOUBLE, IntensityProbPerProcessor, no_intenstiesPerProcessor, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-	for (int pixel = 0; pixel < no_intenstiesPerProcessor; pixel++)
-	{
-		if (pixel == 0)
-			IntensityProbPerProcessor[pixel] = IntensityProbPerProcessor[pixel] / pixelsCount;
-
-		else
-			IntensityProbPerProcessor[pixel] = (IntensityProbPerProcessor[pixel] / pixelsCount) + IntensityProbPerProcessor[pixel - 1];
-
-
-	}
-	double lastComulativeProb = IntensityProbPerProcessor[(int)no_intenstiesPerProcessor - 1];
-	double sum = 0;
-	MPI_Exscan(&lastComulativeProb, &sum, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-
-	for (int intensity = 0; intensity < no_intenstiesPerProcessor; intensity++)
-	{
-
-		newIntensityPerProcessor[intensity] = (int)((IntensityProbPerProcessor[intensity] + sum) * 240);
-
-	}
-
-	MPI_Gather(newIntensityPerProcessor, no_intenstiesPerProcessor, MPI_INT, newIntensity, no_intenstiesPerProcessor, MPI_INT, 0, MPI_COMM_WORLD);
-    MPI_Bcast(newIntensity, 256, MPI_INT, 0, MPI_COMM_WORLD);
-	MPI_Scatter(imageData, no_pixelsPerProcessor, MPI_INT, pixelsPerProcessor, no_pixelsPerProcessor, MPI_INT, 0, MPI_COMM_WORLD);
 	
+		if (rank == 0)
+	{
+		double* ParallelCumulativeProbPerIntensity = sequentialProbability(globalIntensityCount, pixelsCount);
+		newIntensity = updateIntensity(ParallelCumulativeProbPerIntensity);
+	}
+
+	MPI_Bcast(newIntensity, 256, MPI_INT, 0, MPI_COMM_WORLD);
+	MPI_Scatter(imageData, no_pixelsPerProcessor, MPI_INT, pixelsPerProcessor, no_pixelsPerProcessor, MPI_INT, 0, MPI_COMM_WORLD);
+
 	for (int pixel = 0; pixel < no_pixelsPerProcessor; pixel++)
 	{
 		int intestiy = pixelsPerProcessor[pixel];
 		pixelsPerProcessor[pixel] = newIntensity[intestiy];
 	}
-	MPI_Gather(pixelsPerProcessor, no_pixelsPerProcessor, MPI_INT, newImageDataParellel, no_pixelsPerProcessor, MPI_INT, 0, MPI_COMM_WORLD);
+	MPI_Gather(pixelsPerProcessor, no_pixelsPerProcessor, MPI_INT, newImageDataParallel, no_pixelsPerProcessor, MPI_INT, 0, MPI_COMM_WORLD);
+	
+	if (rank == 0 && pixelsCount % size != 0)
+	{
+		int remainingPixels = pixelsCount % size;
+		int startIndex = no_pixelsPerProcessor * size;
+
+		for (int pixel = startIndex; pixel < pixelsCount; pixel++)
+		{
+			int intestiy = imageData[pixel];
+			newImageDataParallel[pixel] = newIntensity[intestiy];
+		}
+	}
+
 	MPI_Finalize();
 
 	if (rank == 0)
@@ -224,13 +221,13 @@ int main()
 		stop_s = clock();
 		TotalTime += (stop_s - start_s) / double(CLOCKS_PER_SEC) * 1000;
 		cout << "time for parallel: " << TotalTime << endl;
-		createImage(newImageDataParellel, ImageWidth, ImageHeight, 0);
+		createImage(newImageDataParallel, ImageWidth, ImageHeight, 0);
 
 		start_s = clock();
 		int* pixelsPerIntensity = sequentialIntensityCount(imageData, pixelsCount);
-		double* cumulativeProbPerIntensity = sequentialProbability(pixelsPerIntensity, pixelsCount);
-		int* newIntenstiyArr = updateIntensity(cumulativeProbPerIntensity);
-		int* newImageSequential = updateImage(imageData, newIntenstiyArr, pixelsCount);
+		double* sequentialCumulativeProbPerIntensity = sequentialProbability(pixelsPerIntensity, pixelsCount);
+		int* newIntenstiySequential = updateIntensity(sequentialCumulativeProbPerIntensity);
+		int* newImageSequential = updateImage(imageData, newIntenstiySequential, pixelsCount);
 		stop_s = clock();
 		TotalTime += (stop_s - start_s) / double(CLOCKS_PER_SEC) * 1000;
 		cout << "time for sequential: " << TotalTime << endl;
