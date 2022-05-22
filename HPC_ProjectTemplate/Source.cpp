@@ -34,9 +34,9 @@ int* inputImage(int* w, int* h, System::String^ imagePath) //put the size of ima
 	OriginalImageHeight = BM.Height;
 	*w = BM.Width;
 	*h = BM.Height;
-	int* Red = new int[BM.Height * BM.Width];
+	/*int* Red = new int[BM.Height * BM.Width];
 	int* Green = new int[BM.Height * BM.Width];
-	int* Blue = new int[BM.Height * BM.Width];
+	int* Blue = new int[BM.Height * BM.Width];*/
 	input = new int[BM.Height * BM.Width];
 	for (int i = 0; i < BM.Height; i++)
 	{
@@ -44,9 +44,7 @@ int* inputImage(int* w, int* h, System::String^ imagePath) //put the size of ima
 		{
 			System::Drawing::Color c = BM.GetPixel(j, i);
 
-			Red[i * BM.Width + j] = c.R;
-			Blue[i * BM.Width + j] = c.B;
-			Green[i * BM.Width + j] = c.G;
+			
 
 			input[i * BM.Width + j] = ((c.R + c.B + c.G) / 3); //gray scale value equals the average of RGB values
 
@@ -65,8 +63,10 @@ void createImage(int* image, int width, int height, int index)
 
 	for (int i = 0; i < MyNewImage.Height; i++)
 	{
+		
 		for (int j = 0; j < MyNewImage.Width; j++)
 		{
+			
 			//i * OriginalImageWidth + j
 			if (image[i * width + j] < 0)
 			{
@@ -135,27 +135,29 @@ int main()
 	int start_s, stop_s, TotalTime = 0;
 
 
-
+	
 	System::String^ imagePath;
 	std::string img;
-	img = "..//Data//Input//test.png";
-
-
-
-	imagePath = marshal_as<System::String^>(img);
-	int* imageData = inputImage(&ImageWidth, &ImageHeight, imagePath);
-
-	System::Drawing::Bitmap BM(imagePath);
-	int pixelsCount = BM.Width * BM.Height;
-
-
-
+	img = "..//Data//Input//5N.png";
 
 	start_s = clock();
 	int rank, size;
+	int* imageData = nullptr;
+	int pixelsCount = 0;
 	MPI_Init(NULL, NULL);
 	MPI_Comm_size(MPI_COMM_WORLD, &size);
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
+	if (rank == 0)
+	{
+		imagePath = marshal_as<System::String^>(img);
+		imageData = inputImage(&ImageWidth, &ImageHeight, imagePath);
+		pixelsCount = ImageWidth * ImageHeight;
+	}
+	
+	MPI_Barrier(MPI_COMM_WORLD);
+	MPI_Bcast(&pixelsCount, 1, MPI_INT, 0, MPI_COMM_WORLD);
+	
 
 	int no_pixelsPerProcessor = pixelsCount / size;
 	int* pixelsPerProcessor = new int[no_pixelsPerProcessor]();
@@ -166,14 +168,14 @@ int main()
 	int* newImageDataSequential = new int[pixelsCount]();
 
 	MPI_Scatter(imageData, no_pixelsPerProcessor, MPI_INT, pixelsPerProcessor, no_pixelsPerProcessor, MPI_INT, 0, MPI_COMM_WORLD);
-
+	MPI_Barrier(MPI_COMM_WORLD);
 	for (int pixel = 0; pixel < no_pixelsPerProcessor; pixel++)
 	{
 		int temp = pixelsPerProcessor[pixel];
 		localIntensityCount[temp] += 1;
 	}
+	MPI_Barrier(MPI_COMM_WORLD);
 	MPI_Reduce(localIntensityCount, globalIntensityCount, 256, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
-	
 	if (rank == 0 && pixelsCount % size != 0)
 	{
 		int remainingPixels = pixelsCount % size;
@@ -191,9 +193,9 @@ int main()
 		double* ParallelCumulativeProbPerIntensity = sequentialProbability(globalIntensityCount, pixelsCount);
 		newIntensity = updateIntensity(ParallelCumulativeProbPerIntensity);
 	}
-
+	MPI_Barrier(MPI_COMM_WORLD);
 	MPI_Bcast(newIntensity, 256, MPI_INT, 0, MPI_COMM_WORLD);
-	MPI_Scatter(imageData, no_pixelsPerProcessor, MPI_INT, pixelsPerProcessor, no_pixelsPerProcessor, MPI_INT, 0, MPI_COMM_WORLD);
+	
 
 	for (int pixel = 0; pixel < no_pixelsPerProcessor; pixel++)
 	{
@@ -201,7 +203,7 @@ int main()
 		pixelsPerProcessor[pixel] = newIntensity[intestiy];
 	}
 	MPI_Gather(pixelsPerProcessor, no_pixelsPerProcessor, MPI_INT, newImageDataParallel, no_pixelsPerProcessor, MPI_INT, 0, MPI_COMM_WORLD);
-	
+	MPI_Barrier(MPI_COMM_WORLD);
 	if (rank == 0 && pixelsCount % size != 0)
 	{
 		int remainingPixels = pixelsCount % size;
@@ -213,11 +215,13 @@ int main()
 			newImageDataParallel[pixel] = newIntensity[intestiy];
 		}
 	}
-
+	MPI_Barrier(MPI_COMM_WORLD);
+	
 	MPI_Finalize();
 
 	if (rank == 0)
 	{
+		
 		stop_s = clock();
 		TotalTime += (stop_s - start_s) / double(CLOCKS_PER_SEC) * 1000;
 		cout << "time for parallel: " << TotalTime << endl;
