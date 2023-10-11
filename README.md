@@ -1,5 +1,13 @@
-# Parallel-Histogram-Equalization
+![image](https://github.com/omarkhaled646/Parallel-Histogram-Equalization/assets/63152184/611e337e-c0fa-4ad9-bb46-7ba03212c604)# Parallel-Histogram-Equalization
 
-Histogram equalization is a technique for adjusting image intensities to enhance contrast in input image, using MPI Parallel Programming
+Histogram equalization is a technique for adjusting image intensities to enhance contrast in input images, using MPI Parallel Programming
 
-In gray images, each pixel has only one value which is the intensity of the pixels. The value may range from 0 to 255. The values are varying from black at the weakness intensity to white at strongest
+In gray images, each pixel has only one value which is the intensity of the pixels. The value may range from 0 to 255. The values vary from black at the weakness intensity to white at strongest
+![image](https://github.com/omarkhaled646/Parallel-Histogram-Equalization/assets/63152184/d8ac8f93-6082-41c3-b7af-3526137ca3fd)
+
+# Features
+• Parallel Execution on any number of processors
+
+• Handles different sized images
+
+• Logs time of execution on the processers
