@@ -1,1 +1,1 @@
-# Hpc-Project
+Parallel-Histogram-Equalization
