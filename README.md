@@ -17,6 +17,6 @@ In gray images, each pixel has only one value which is the intensity of the pixe
 
 | Before | After |
 | ------------ | ------------- |
-| ![](Data/Input/N.png) | !<img src= "Data/OutPut/outputRes0.png" height=50 width=50> |
+| ![](Data/Input/N.png) | !<img src= "Data/OutPut/outputRes0.png" height=100 width=100> |
 
 
