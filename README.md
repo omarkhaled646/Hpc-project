@@ -13,6 +13,10 @@ In gray images, each pixel has only one value which is the intensity of the pixe
 
 • Logs time of execution on the processers
 
+# Screenshots
 
+| Before | After |
+| ------------ | ------------- |
+| ![](Data/Input/N.png) |
 
 
