@@ -1,4 +1,4 @@
-![68747470733a2f2f696d6775722e636f6d2f5151364b3274362e6a7067](https://github.com/omarkhaled646/Parallel-Histogram-Equalization/assets/63152184/b2ff7797-85b5-4b58-8f21-723af0f22b49)# Parallel-Histogram-Equalization
+# Parallel-Histogram-Equalization
 
 Histogram equalization is a technique for adjusting image intensities to enhance contrast in input images, using MPI Parallel Programming
 
