@@ -12,3 +12,10 @@ In gray images, each pixel has only one value which is the intensity of the pixe
 • Handles different sized images
 
 • Logs time of execution on the processers
+
+# Screenshots
+
+Before | After
+------------ | -------------
+Content from cell 1 | Content from cell 2
+Content in the first column | Content in the second column
