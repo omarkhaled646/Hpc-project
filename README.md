@@ -17,6 +17,6 @@ In gray images, each pixel has only one value which is the intensity of the pixe
 
 | Before | After |
 | ------------ | ------------- |
-| ![](Data/Input/N.png) | ![](Data/OutPut/outputRes0.png) <img src="[https://your-image-url.typ](https://github.com/omarkhaled646/Parallel-Histogram-Equalization/blob/main/Data/OutPut/outputRes0.png)https://github.com/omarkhaled646/Parallel-Histogram-Equalization/blob/main/Data/OutPut/outputRes0.pnge" width="10"> |
+| ![](Data/Input/N.png) | ![](Data/OutPut/outputRes0.png) <img src='Data/OutPut/outputRes0.png', width=10>|
 
 
